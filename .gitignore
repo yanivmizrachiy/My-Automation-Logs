@@ -1,0 +1,3 @@
+.secrets/
+n8n/.env.local
+n8n/_secret.txt

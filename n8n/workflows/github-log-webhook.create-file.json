@@ -1,0 +1,92 @@
+{
+  "name": "Yaniv GitHub Logs (Webhook -> New File)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "log-event",
+        "responseMode": "onReceived"
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{['x-yaniv-secret']}}",
+              "operation": "equals",
+              "value2": "={{.YANIV_WEBHOOK_SECRET}}"
+            }
+          ]
+        }
+      },
+      "name": "Auth Secret",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [320, 200]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            { "name": "repoOwner", "value": "yanivmizrachiy" },
+            { "name": "repoName", "value": "My-Automation-Logs" },
+            { "name": "filePath", "value": "={{'events/' + 02/05/2026 00:58:43.toFormat('yyyy-LL') + '/' + 02/05/2026 00:58:43.toFormat('dd') + '/' + 02/05/2026 00:58:43.toFormat('HHmmss') + '-' + Math.random().toString(16).slice(2,8) + '.json'}}" },
+            { "name": "commitMessage", "value": "={{'log: ' + 02/05/2026 00:58:43.toISO()}}" },
+            { "name": "raw", "value": "={{JSON.stringify({ts:02/05/2026 00:58:43.toISO(),headers:,body:}, null, 2)}}" },
+            { "name": "contentB64", "value": "={{Buffer.from(.raw,'utf8').toString('base64')}}" }
+          ]
+        }
+      },
+      "name": "Prepare Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [540, 200]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{'https://api.github.com/repos/' + .repoOwner + '/' + .repoName + '/contents/' + .filePath}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "User-Agent", "value": "n8n" },
+            { "name": "Accept", "value": "application/vnd.github+json" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={{ { message: .commitMessage, content: .contentB64 } }}"
+      },
+      "name": "GitHub Create File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [770, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { ok:true, repo:'https://github.com/' + .repoOwner + '/' + .repoName, file:.filePath } }}"
+      },
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [990, 200]
+    }
+  ],
+  "connections": {
+    "Webhook": { "main": [[{ "node": "Auth Secret", "type": "main", "index": 0 }]] },
+    "Auth Secret": { "main": [[{ "node": "Prepare Payload", "type": "main", "index": 0 }]] },
+    "Prepare Payload": { "main": [[{ "node": "GitHub Create File", "type": "main", "index": 0 }]] },
+    "GitHub Create File": { "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": {}
+}
